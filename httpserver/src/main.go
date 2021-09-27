@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -22,7 +21,6 @@ func HealthzHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func IndexHandler(w http.ResponseWriter, req *http.Request) {
-	fmt.Println("-----------------")
 	io.WriteString(w, "index\n")
 }
 
@@ -42,7 +40,7 @@ func SetHeader(handler http.Handler) http.Handler {
 func logRequest(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		remoteaddr := strings.Split(r.RemoteAddr, ":")[0]
-		log.Printf("%s \n", remoteaddr)
+		log.Printf("%s %d\n", remoteaddr, http.StatusOK)
 		handler.ServeHTTP(w, r)
 	})
 }
