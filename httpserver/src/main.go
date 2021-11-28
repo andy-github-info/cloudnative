@@ -1,19 +1,44 @@
 package main
 
 import (
+	"context"
+	"flag"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 )
 
 func main() {
+	var srv http.Server
+	flag.Set("v", "4")
 	http.Handle("/resources", http.NotFoundHandler())
 	http.Handle("/", SetHeader(http.HandlerFunc(IndexHandler)))
 	http.Handle("/healthz", SetHeader(http.HandlerFunc(HealthzHandler)))
 	log.SetFlags(log.Ldate | log.Ltime)
-	log.Fatal(http.ListenAndServe(":80", logRequest(http.DefaultServeMux)))
+	log.Printf("Starting http server...")
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		if err := http.ListenAndServe(":80", logRequest(http.DefaultServeMux)); err != nil && err != http.ErrServerClosed{
+			log.Fatalf("listen: %s\n", err)
+		}
+	}()
+	log.Printf("Server Started")
+	<-done
+	log.Printf("Server Stoped")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer func() {
+		cancel()
+	}()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Server Shutdown Failed:%+v", err)
+	}
+	log.Printf("Server Exited Properly")
 }
 
 func HealthzHandler(w http.ResponseWriter, req *http.Request) {
